@@ -1,0 +1,309 @@
+#!/bin/sh
+# 
+#####################################################################
+#
+#  Script to maintain a address - contacts database
+#
+#####################################################################
+
+#
+# Define the name of the file (to store data)
+#
+fname=contacts.dat
+
+[ ! -f $fname ] && > $fname # if the file not exist create it
+
+#
+# 
+
+yesno()
+{
+    
+    while true
+    do
+        
+        #   Display the strings/paramters passed in, followed by "(Y/N)?"
+        
+        echo "$* (Y/N)? \c"
+        read yn junk
+
+        case $yn in
+            y|Y|yes|Yes|YES)
+                return 0;;        # return TRUE
+            n|N|no|No|NO)
+                return 1;;        # return FALSE
+            *)  
+		echo    
+                echo " Please answer Yes or No." ;;
+        esac
+    done
+}
+
+line()
+{
+        echo "====================================================================================================="
+}
+
+heading()
+{
+	
+		echo "First Name    Surname       Address               City           Zip    E-mail                       "
+        line
+}
+
+
+print_format()
+{
+	 awk -F : '{printf("%-14.14s%-14.14s%-22.22s%-15.15s%-7.7s%-29.29s\n", $1, $2, $3, $4, $5, $6)}'
+}
+
+create_records()
+{
+	while true
+	do
+		echo
+		while true
+		do
+			
+	        # Fill in the contacts detail from keyboard
+
+	        echo -n "Please enter your first name: "
+	        read name
+	        echo -n "Please enter your surname: "
+	        read surname
+	        echo -n "Please enter your address: "
+	        read address
+	        echo -n "Please enter your City: " 
+	        read city
+	        echo -n "Please enter Zip: "
+	        read zip
+	        echo -n "Please enter your e-mail: "
+	        read email
+		
+		clear 
+
+		echo "You entered the following contact details: "
+		echo "============================================" 
+		echo "First Name: $name"
+		echo "   Surname: $surname"
+		echo "   Address: $address"
+		echo "      City: $city"
+		echo "       Zip: $zip"
+		echo "    E-mail: $email"
+		echo "============================================"
+		if yesno Are these details correct # exit status 0 proceed # exit status 1 repeat entry
+		then
+		       	# check existing ones,the email must be unique and then
+		         mail=`cut -d : -f 6 $fname`	
+	       		 if ! grep $email $mail > /dev/null 2>&1 
+			 then	 
+	       		     # Write the datail to file
+	                     echo $name:$surname:$address:$city:$zip:$email >> $fname
+			     echo
+			     echo " Contact details are saved successfully "
+			     echo
+			     break # go to yesno Create another record, break inner loop
+		         else 
+			     echo
+		             echo "Sorry, Contact with that email address $email already exists "
+		             echo
+			     break # go to yesno Create another record, break inner loop
+			 fi
+		else
+			echo
+			echo " Please repeat the entry "
+			echo
+			sleep 2
+		fi
+		done
+	echo
+	yesno Do you want to create another record || break # break to main 
+	echo
+	done
+
+}
+
+view_records()
+ {
+        
+        # Show what`s current contacts in database;
+        
+         
+	(
+		echo
+		echo "\t\t\t You have selected the database overview "
+		line
+		echo " \n If you want to:"
+		echo " \t\t Sort by First name enter 0 "
+		echo " \t\t Sort by Surname enter 1 "
+		echo
+	        echo " Enter your choice: \c" 
+		read a
+		echo $a
+		sleep 1
+		clear
+		echo "\t\t\t The current contacts in database "
+		line
+		echo
+
+		if [ "$a" -ge 0 -a  "$a" -le 6 ] > /dev/null 2>&1 
+		then
+                	echo
+                	heading
+                	sort -t : +$a $fname | print_format
+			line
+		else
+			echo " You have selected a non-valid option for sort"
+                        echo " This is an unsorted list "
+			echo 
+			heading
+			cat $fname | print_format
+			line
+			echo
+			
+		fi	
+
+        ) | more
+        
+        # Display how many there are;
+        
+	echo
+        echo " There are `cat $fname | wc -l` contacts in the database"
+	echo
+
+}
+
+search_records()
+{
+	clear
+	while true
+	do
+		echo "\t\t Welcome to the database search "
+		line
+
+		while true
+		do
+			echo
+        		echo -n "Please enter pattern to search for :"
+        		read string
+
+        		if egrep -i "$string" $fname > /dev/null 
+        		then
+          		 (
+	       	        	echo
+              	 		heading
+              	  		egrep -i -w "$string" $fname | print_format
+          		 ) | more
+		 		line
+		        	echo
+        	        	break         
+
+        		else
+				echo
+                		echo "Sorry, no records in file \"$fname\" contain \"$string\""
+				line
+				echo
+               	       	break          
+
+                fi
+	    done
+		yesno Do you want to repeat the search || break
+
+	done
+                
+
+}
+
+delete_records()
+{
+	clear
+
+                echo
+                echo -n "Please enter pattern to search for :"
+                read string
+
+                if egrep -i -w "$string" $fname > /dev/null
+                then
+                 (
+                        echo
+                        heading
+                        egrep -i -w "$string" $fname | print_format
+                 )|more
+					echo
+					echo " To CONFIRM the deletion of record please enter the email,"
+					echo 
+					echo -n " Enter email :"
+					read  udel 
+					if [ ! -z $udel ]
+					then
+						for u in $udel	
+						do 
+							cut -d : -f 6 $fname > mail
+							#cat mail
+							if grep -w "$u" $fname > izlaz 
+							then
+							echo User "$string" with e-mail" $u" is deleted
+							while IFS= read -r line; do egrep -i -w -v "$line" $fname > temp && mv temp $fname ; done < izlaz	
+							
+							rm mail
+							rm izlaz 
+							fi
+								
+						done
+					else
+						echo " You have not confirmed, "
+					fi	
+
+                else
+                        echo
+                        echo "Sorry, no records in file \"$fname\" contain \"$string\""
+                        echo
+                        
+                fi
+}
+
+
+
+	
+# MAIN PROGRAM
+#
+# Display the menu
+
+while true
+do
+
+	clear 
+		echo "\n\t\tSHELL PROGRAMMING DATABASE"
+		echo "\t\t\tMAIN MENU"
+		echo "\n\tWhat do you wish to do?\n"
+		echo "\t1. Create a record "
+		echo "\t2. View records"
+		echo "\t3. Search for records"
+		echo "\t4. Delete records"
+		echo "\tq. Exit program\n"
+		echo -n "\tPlease enter your choise: "
+		read ans
+
+			case $ans in 
+				1) create_records ;;
+
+        		2) view_records ;;
+
+				3) search_records ;;
+
+				4) delete_records ;;
+				
+				q|Q)
+	        			exit 0 ;;
+				*)
+		       		echo
+	       			echo " That was an invalid choise " ;;	
+		
+		  	esac
+	        echo
+                echo -n " Please hit <ENTER> to continue: "
+                read hit
+done
+
+
+
